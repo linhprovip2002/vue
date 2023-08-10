@@ -15,6 +15,7 @@
             <th class="border p-2">Email</th>
             <th class="border p-2">Gender</th>
             <th class="border p-2">Age</th>
+            <th class="border p-2">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -24,25 +25,64 @@
             <td class="border p-2">{{ user.email }}</td>
             <td class="border p-2">{{ user.gender }}</td>
             <td class="border p-2">{{ user.age }}</td>
+            <td class="border p-2">
+              <button @click="editUser(user)" class="text-blue-500">Edit</button>
+              <button @click="deleteUser(user.id)" class="text-red-500 ml-2">Delete</button>
+            </td>
           </tr>
         </tbody>
       </table>
+
+
+      <teleport to="body">
+      <div v-if="showModelEdit" class="fixed inset-0 flex justify-center items-center bg-black bg-opacity-50">
+        <div class="bg-white p-4 rounded-lg">
+          <h2 class="text-xl font-semibold mb-4">Edit User</h2>
+          <form @submit.prevent="saveUserChanges(userEdit)">
+            <label class="block mb-2">
+              Name:
+              <input v-model="userEdit.name" class="border rounded p-2 w-full" />
+            </label>
+            <label class="block mb-2">
+              Email:
+              <input v-model="userEdit.email" class="border rounded p-2 w-full" />
+            </label>
+            <label class="block mb-2">
+              Gender:
+              <input v-model="userEdit.gender" class="border rounded p-2 w-full" />
+            </label>
+            <label class="block mb-2">
+              Age:
+              <input v-model="userEdit.age" class="border rounded p-2 w-full" />
+            </label>
+            <!-- Other input fields for editing user details -->
+            <div class="mt-4 flex justify-end">
+              <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Save</button>
+              <button @click="cancelEditing" class="ml-2">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </teleport>
     </div>
   </template>
   
   
   <script>
   import axios from 'axios';
-  import { ref, computed } from 'vue';
+  import { ref, computed, onMounted } from 'vue';
   
   export default {
     name: 'DashboardComponent',
     setup() {
-        const accessToken = ref(localStorage.getItem('accessToken').replaceAll('"', ''));
-    const isLogin = computed(()=> accessToken.value !== null)
-      const userData = ref([]);
+        let accessToken = ref(localStorage.getItem('accessToken').replaceAll('"', ''));
+    let isLogin = computed(()=> accessToken.value !== null)
+      let userData = ref([]);
+      let userEdit = ref({});
+      const showModelEdit = ref(false);
       
       const getUserData = async () => {
+        userData.value = [];
         console.log(accessToken.value);
         try {
           const response = await axios.get('http://localhost:3000/api/users/', {
@@ -51,24 +91,73 @@
             }
           });
   
-          console.log(response.data);
+          // console.log(response.data);
           userData.value = response.data;
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
       };
+  
+      function editUser(user)
+      {
+        userEdit.value = { ...user };
+        showModelEdit.value = true;
+      }    
+      async function deleteUser(id)
+      {   console.log("aaa")
+          try
+          {
+            const res =  await axios.delete("http://localhost:3000/api/users/"+id,{
+              headers:{
+                Authorization: `Bearer ${accessToken.value}`
+              }
+             })
+             console.log(res.response)
+          } catch(err)
+          {
+           console.log(err)
+          }
+      }
+      const saveUserChanges = async (user) => {
+      try
+      {
+          await axios.put("http://localhost:3000/api/users/"+user.id,userEdit.value, {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`
+          }})
+
+          showModelEdit.value = false;
+      }catch(err)
+      { 
+        console.log(err)
+      }
+      console.log(userEdit.value);
       
+      };
+      const cancelEditing = () => {
+      showModelEdit.value = false;
+    };
+    onMounted(()=>
+    {
+      getUserData()
+    })
+
       return {
         userData,
         getUserData,
         accessToken,
-        isLogin
+        isLogin,
+        editUser,
+        userEdit,
+        showModelEdit,
+        saveUserChanges,
+        cancelEditing,
+        deleteUser,
+        onMounted
       };
     }
   };
   </script>
   
-  <style>
-  /* Your styles here */
-  </style>
+
   
